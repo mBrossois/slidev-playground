@@ -1,4 +1,5 @@
 <template>
+  <div v-if="$nav.currentPage > 1 && $nav.currentPage < 5">
     <div class="circle" >
       <p class="connections">{{ connnections }}</p>
     </div>
@@ -8,17 +9,45 @@
           <span class="icon">✋</span>
         </button>
     </div>
+  </div>
+  <div v-else-if="$nav.currentPage !== 1 " class="topics">
+    <div class="topics-list">
+      <div v-for="topic of votesPerTopic" :key="topic.name" class="topic-circle" >
+        <p class="name">{{ topic.name }}</p>
+        <p class="connections">{{ topic.votes }}</p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import PartySocket from 'partysocket';
-import { computed, Ref, ref, watch } from 'vue';
+import { Ref, ref } from 'vue';
+import { useNav } from '@slidev/client'
+import { getCookie, setCookie } from './utils/cookie'
 
 const connnections = ref(0)
 
+const { currentPage } = useNav()
+
+const pageToTopic = {
+  1: 'home',
+  2: 'secondTopic',
+  3: 'secondTopic',
+  4: 'thirdTopic'
+}
+
+const cookieVotes = getCookie('votes')
+
+const votesPerTopic = cookieVotes ? JSON.parse(cookieVotes) : {
+  home:  {name: 'home', votes: 0},
+  secondTopic: {name: 'second topic', votes: 0},
+  thirdTopic: {name: 'third topic', votes: 0},
+}
+  
 const partySocket = new PartySocket({
-  host: 'host',
-  room: 'roomies'
+  host: import.meta.env.VITE_PARTYKIT_URL ?? '',
+  room: 'vuejsamsterdam'
 });
 
 const left = (value: number) => {
@@ -35,6 +64,9 @@ let currthumbsUp = 0
 function addthumbsUp() {
     const id = currthumbsUp
     currthumbsUp += 1
+    const topic = pageToTopic[currentPage.value]
+    votesPerTopic[topic].votes += 1;
+    setCookie('votes', JSON.stringify(votesPerTopic), 1);
     thumbsUps.value.push(id)
     setTimeout(() => {
       thumbsUps.value = thumbsUps.value.filter(value => value !== id)
@@ -72,11 +104,12 @@ partySocket.addEventListener("message", (e) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: saturate(180%) blur(10px);
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: saturate(20%) blur(5px);
   border-bottom-left-radius: 100%;
   padding-left: 1rem;
   padding-bottom: 1rem;
+  z-index: 1000;
 }
 
 .circle .connections {
@@ -112,6 +145,41 @@ partySocket.addEventListener("message", (e) => {
     bottom: -16px;
 
     animation: up 2500ms ease-in forwards;
+}
+
+.topics {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  top: 2rem;
+  right: 2rem;
+  z-index: 100;
+}
+
+.topics-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.topic-circle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+
+  flex-shrink: 0;
+
+  background: rgba(95, 0, 249);
+  color: white;
+  border-radius: 100%;
+  padding: 1rem;
+  aspect-ratio: 1;
+  min-width: 130px;
+}
+
+.topic-circle .name {
+  font-size: 18px;
 }
 
 @keyframes up {
